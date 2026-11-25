@@ -395,11 +395,22 @@ export function Mri3DRegionViewer({
   }, [compact]);
 
   useEffect(() => {
-    if (viewMode !== "3d" || !has3DModel) return;
+    if (!has3DModel) return;
     const container = mountRef.current;
     if (!container) return;
 
     let disposed = false;
+
+    // Pre-check WebGL availability before invoking THREE.WebGLRenderer so Three.js never logs a console.error
+    const probeCanvas = document.createElement("canvas");
+    const gl =
+      probeCanvas.getContext("webgl2") ||
+      probeCanvas.getContext("webgl") ||
+      probeCanvas.getContext("experimental-webgl");
+    if (!gl) {
+      setWebglUnavailable(true);
+      return;
+    }
     setWebglUnavailable(false);
 
     const width = container.clientWidth || 360;
@@ -415,6 +426,7 @@ export function Mri3DRegionViewer({
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({
+        canvas: probeCanvas,
         antialias: true,
         alpha: true,
         powerPreference: "default",
@@ -557,11 +569,8 @@ export function Mri3DRegionViewer({
       renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
       rendererRef.current = null;
       renderer.dispose();
-      try {
-        renderer.forceContextLoss();
-      } catch {}
     };
-  }, [region, findings, viewMode, has3DModel]);
+  }, [region, findings, has3DModel]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const st = stateRef.current;
@@ -668,9 +677,9 @@ export function Mri3DRegionViewer({
         )}
       </div>
 
-      {/* MODE 1: CLICKABLE THREE.JS 3D VIEWPORT (OR HONEST EMPTY STATE FOR UNSUPPORTED REGIONS / WEBGL FALLBACK) */}
-      {viewMode === "3d" ? (
-        !has3DModel || webglUnavailable ? (
+      {/* MODE 1: CLICKABLE THREE.JS 3D VIEWPORT (KEPT MOUNTED SO VIEW-FILM TOGGLE NEVER RECREATES WEBGL) */}
+      <div className={viewMode === "3d" ? "block" : "hidden"}>
+        {!has3DModel || webglUnavailable ? (
           <div
             style={{ height: compact ? 185 : 275 }}
             className="mx-4 my-1 flex flex-col items-center justify-center rounded-2xl border border-[#DCEAEA] bg-white/80 px-6 text-center space-y-2.5"
@@ -773,9 +782,11 @@ export function Mri3DRegionViewer({
             Drag to rotate · Tap any numbered point to focus
           </p>
         </div>
-        )
-      ) : (
-        /* MODE 2: DIRECT MRI FILM VIEWER (PDF or Image) */
+        )}
+      </div>
+
+      {/* MODE 2: DIRECT MRI FILM VIEWER (PDF or Image) */}
+      {viewMode === "film" && (
         <div
           style={{ height: compact ? 185 : 275 }}
           className="mx-4 my-1 flex flex-col items-center justify-center overflow-auto rounded-2xl border border-[#DCEAEA] bg-[#18181B] text-white"

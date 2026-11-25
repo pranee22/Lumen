@@ -283,9 +283,37 @@ export default function LumenApp() {
             {/* Samsung One UI Top Viewing Area */}
             <div className="px-6 pt-8 pb-5">
               <div className="flex items-center gap-2">
-                <svg width="20" height="20" viewBox="0 0 28 28" aria-hidden="true">
-                  <circle cx="14" cy="14" r="12" fill="none" stroke="#0E4F4F" strokeWidth="1.8" />
-                  <circle cx="14" cy="14" r="4" fill="#0E4F4F" />
+                <svg width="22" height="22" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+                  {/* MRI Scanner Gantry Bore Arch */}
+                  <path
+                    d="M4 21V13.5C4 7.98 8.48 3.5 14 3.5C19.52 3.5 24 7.98 24 13.5V21"
+                    stroke="#0E4F4F"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  {/* Inner Axial Magnetic Field / Tomographic Slice Ring */}
+                  <circle
+                    cx="14"
+                    cy="13.5"
+                    r="5.5"
+                    stroke="#0E4F4F"
+                    strokeWidth="1.6"
+                    strokeDasharray="3.2 2"
+                  />
+                  {/* Brain / Cross-Section Slice Plane & Patient Table */}
+                  <ellipse cx="14" cy="13.5" rx="2.6" ry="3.2" stroke="#0E4F4F" strokeWidth="1.5" />
+                  <path
+                    d="M2.5 22.5H25.5"
+                    stroke="#0E4F4F"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M8.5 19.5H19.5"
+                    stroke="#0E4F4F"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
                 </svg>
                 <span className="text-sm font-semibold tracking-tight text-[#0E4F4F]">Lumen</span>
               </div>
@@ -299,8 +327,8 @@ export default function LumenApp() {
 
             {/* Bottom Thumb-Zone Sheet */}
             <div className="flex flex-1 flex-col justify-between overflow-y-auto rounded-t-[28px] bg-white px-5 pt-5 pb-5 shadow-sm">
-              <div className="space-y-4">
-                {/* Report File Upload + Paste */}
+              <div className="space-y-5">
+                {/* Report File Upload + Paste + Grouped MRI Film Sheet */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-[#18181B]">MRI Report</span>
@@ -342,29 +370,29 @@ export default function LumenApp() {
                     placeholder="Or paste your MRI report text here..."
                     className="w-full rounded-2xl border border-[#E4E4E7] bg-[#F9FBFB] p-3 text-xs leading-relaxed text-[#18181B] placeholder:text-[#A1A1AA] focus:border-[#0E4F4F] focus:bg-white focus:outline-none"
                   />
+
+                  {/* Optional MRI Film Upload — Tightly grouped with MRI Report */}
+                  <div className="flex items-center justify-between px-0.5 pt-0.5 text-xs">
+                    <span className="truncate text-[#52525B]">
+                      {filmFileName ? `Film: ${filmFileName}` : "MRI film sheet (optional)"}
+                    </span>
+                    <label className="ml-2 shrink-0 cursor-pointer font-semibold text-[#0E4F4F] hover:underline">
+                      <span>{filmFileName ? "Replace" : "Attach film"}</span>
+                      <input
+                        type="file"
+                        accept=".pdf,image/*"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleFilmSelect(f);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
                 </div>
 
-                {/* Optional MRI Film Upload (Clean inline row, no extra box) */}
-                <div className="flex items-center justify-between pt-0.5 text-xs">
-                  <span className="truncate text-[#52525B]">
-                    {filmFileName ? `Film: ${filmFileName}` : "MRI film sheet (optional)"}
-                  </span>
-                  <label className="ml-2 shrink-0 cursor-pointer font-semibold text-[#0E4F4F] hover:underline">
-                    <span>{filmFileName ? "Replace" : "Attach film"}</span>
-                    <input
-                      type="file"
-                      accept=".pdf,image/*"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleFilmSelect(f);
-                      }}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                {/* Optional details: Age first, then auto-expanding What's bothering you? */}
-                <div className="space-y-2.5 pt-1">
+                {/* Optional details: Clearly separated below MRI Report group */}
+                <div className="space-y-2.5 border-t border-[#F1F5F5] pt-3.5">
                   <p className="text-xs font-semibold text-[#18181B]">Optional details</p>
 
                   <div className="flex items-center gap-2.5">
@@ -432,7 +460,28 @@ export default function LumenApp() {
           <div className="flex h-full flex-col justify-between overflow-hidden">
             {/* Minimal Header */}
             <header className="flex shrink-0 items-center justify-between px-4 pt-3.5 pb-1">
-              <span className="text-sm font-semibold tracking-tight text-[#0E4F4F]">Lumen</span>
+              <div className="flex items-center gap-1.5">
+                <svg width="18" height="18" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+                  <path
+                    d="M4 21V13.5C4 7.98 8.48 3.5 14 3.5C19.52 3.5 24 7.98 24 13.5V21"
+                    stroke="#0E4F4F"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  <circle
+                    cx="14"
+                    cy="13.5"
+                    r="5.5"
+                    stroke="#0E4F4F"
+                    strokeWidth="1.6"
+                    strokeDasharray="3.2 2"
+                  />
+                  <ellipse cx="14" cy="13.5" rx="2.6" ry="3.2" stroke="#0E4F4F" strokeWidth="1.5" />
+                  <path d="M2.5 22.5H25.5" stroke="#0E4F4F" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M8.5 19.5H19.5" stroke="#0E4F4F" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+                <span className="text-sm font-semibold tracking-tight text-[#0E4F4F]">Lumen</span>
+              </div>
               <div className="flex items-center gap-2.5 text-[11px]">
                 <span className="text-[#5F7878]">
                   {explainData.readingConfidence.scorePercent}% read
@@ -442,6 +491,9 @@ export default function LumenApp() {
                   onClick={() => {
                     setScreen("setup");
                     setSheetState("resting");
+                    setErrorMsg(null);
+                    setChatFile(null);
+                    setShowOriginalLine(false);
                   }}
                   className="rounded-full border border-[#DCEAEA] bg-white px-2.5 py-1 font-medium text-[#18181B]"
                 >
