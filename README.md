@@ -1,7 +1,8 @@
 # Lumen — 3D MRI Report Explainer
 
 **Praneetha Kamabathula, MIT-WPU**  
-*Studio 5b Assignment — AI-Enabled Design Track (Dr. Reddy's Laboratories)*
+*Studio 5b Assignment — AI-Enabled Design Track (Dr. Reddy's Laboratories)*  
+**Live Prototype:** [https://lumenmri.vercel.app/](https://lumenmri.vercel.app/)
 
 Lumen is a mobile-first (`390px`), pure Open Sans AI health-literacy prototype that translates unstructured MRI reports (PDFs, photos, or pasted text) into interactive 3D anatomical views and plain-language summaries for patients and family caregivers waiting to see their doctor.
 
