@@ -1,7 +1,7 @@
 # Lumen — 3D MRI Report Explainer
 
 **Praneetha Kamabathula, MIT-WPU**  
-**Live Prototype:** `<Add Vercel Link>`  
+**Live Prototype:** [LumenMRI Vercel](https://lumenmri.vercel.app/)  
 **GitHub Repository (Code, Research, IA, User Flows & Test MRI Kit):** [https://github.com/pranee22/Lumen](https://github.com/pranee22/Lumen)
 
 ---
