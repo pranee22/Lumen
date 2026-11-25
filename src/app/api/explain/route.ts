@@ -28,6 +28,31 @@ STRICT CLINICAL, ACCURACY & EPISTEMIC RULES:
 10. NO EMOJIS anywhere in your response.
 11. Return ONLY valid JSON matching the requested schema.`;
 
+const GEMINI_MODELS = [
+  "gemini-3.5-flash",
+  "gemini-3.6-flash",
+  "gemini-3.8-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-3-flash-preview",
+];
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Model timeout")), ms);
+    promise.then(
+      (val) => {
+        clearTimeout(timer);
+        resolve(val);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 const VALID_REGIONS = new Set<BodyRegion>([
   "brain",
   "spine_lumbar",
@@ -199,17 +224,20 @@ Return ONLY JSON:
           });
 
           let resText: string | undefined;
-          for (const model of ["gemini-3-flash-preview", "gemini-3.8-flash"]) {
+          for (const model of GEMINI_MODELS) {
             try {
-              const res = await ai.models.generateContent({
-                model,
-                contents: [{ role: "user", parts: askParts }],
-                config: {
-                  systemInstruction: SYSTEM_PROMPT,
-                  responseMimeType: "application/json",
-                  temperature: 0.15,
-                },
-              });
+              const res = await withTimeout(
+                ai.models.generateContent({
+                  model,
+                  contents: [{ role: "user", parts: askParts }],
+                  config: {
+                    systemInstruction: SYSTEM_PROMPT,
+                    responseMimeType: "application/json",
+                    temperature: 0.15,
+                  },
+                }),
+                15000
+              );
               if (res.text) {
                 resText = res.text;
                 break;
@@ -327,17 +355,20 @@ Return ONLY JSON matching:
         });
 
         let resText: string | undefined;
-        for (const model of ["gemini-3-flash-preview", "gemini-3.8-flash"]) {
+        for (const model of GEMINI_MODELS) {
           try {
-            const res = await ai.models.generateContent({
-              model,
-              contents: [{ role: "user", parts }],
-              config: {
-                systemInstruction: SYSTEM_PROMPT,
-                responseMimeType: "application/json",
-                temperature: 0.1,
-              },
-            });
+            const res = await withTimeout(
+              ai.models.generateContent({
+                model,
+                contents: [{ role: "user", parts }],
+                config: {
+                  systemInstruction: SYSTEM_PROMPT,
+                  responseMimeType: "application/json",
+                  temperature: 0.1,
+                },
+              }),
+              18000
+            );
             if (res.text) {
               resText = res.text;
               break;
