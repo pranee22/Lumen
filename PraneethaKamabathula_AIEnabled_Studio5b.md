@@ -60,11 +60,11 @@ Raw LLM radiology simplifications carry a **5%–10% error rate**, including fli
 
 | Risk / Failure Mode | How Lumen Prevents It & Why It Matters |
 |---|---|
-| **Flipped negation or swapped side** | Every simplified sentence is checked against its original report line so *"no bleeding"* cannot flip or *right* swap to *left*; mismatches are intercepted before reaching the user. |
+| **Flipped negation or swapped side** | **Implemented in prototype** as a rule-based negation and left/right keyword check against each original report line (intercepting polarity or side mismatches before rendering); full neural RadGraph NLI verification is planned for production. |
 | **Wrong 3D organ shown** | If a scan region is unidentified or lacks a verified 3D model, Lumen shows an honest empty state with **View Film** rather than defaulting to an unrelated organ. |
 | **Non-MRI or blurry photo** | Unreadable images and non-radiology files return a clear retry prompt rather than guessing or generating placeholder findings. |
 | **Unverified statistics** | Population percentages are shown only when matched to verified clinical studies for that exact finding (e.g., Brinjikji *AJNR* 2015 for lumbar discs; Chavda series for AICA loops). |
-| **Health data privacy** | Patient names, phone numbers, emails, and hospital IDs are masked before and after reading; nothing uploaded or typed is stored. |
+| **Health data privacy** | **Implemented in prototype:** patient names, phone numbers, emails, and hospital IDs are masked before and after reading, and Lumen stores zero data in any database or log (in-memory session only). Masked text/files are processed transiently via the external Gemini API. |
 | **Missed urgent finding** | Critical non-negated findings (mass effect, midline shift, cord compression, acute hemorrhage, aneurysm) lock a prompt-review banner that the AI cannot downgrade. |
 | **Treatment requests & acute red flags** | Medication/surgery queries trigger a polite scope boundary with scaffolding chips; acute neurological symptoms in chat trigger an immediate **108 / 112** emergency halt. |
 
@@ -74,7 +74,7 @@ Raw LLM radiology simplifications carry a **5%–10% error rate**, including fli
 
 | AI Model / Tool | Where Used | Used For |
 |---|---|---|
-| **Gemini 3 Flash Preview** *(fallback: Gemini 3.8 Flash)* | Server-side API (via built-in server API key) | Multimodal OCR and parsing of uploaded MRI PDFs/photos, plain-language translation, 3D spatial pin mapping, and grounded follow-up chat (including additional files attached mid-conversation). |
+| **Gemini 3 Flash Family** *(3.5 / 3.6 / 3.8 Flash cascade)* | Server-side API (via built-in server API key) | Multimodal OCR and parsing of uploaded MRI PDFs/photos, plain-language translation, 3D spatial pin mapping, and grounded follow-up chat (including additional files attached mid-conversation). |
 | **Antigravity AI Assistant** | Research, Critique & Build | Clinical citation verification, multi-persona safety testing, prototype engineering, synthetic test PDF generation, and documentation. |
 
 *Prototype stack & open 3D assets: Built with Next.js, TypeScript, Tailwind CSS (Open Sans), and Three.js using official CC-BY 4.0 NIH HuBMAP / Allen Brain Atlas 3D meshes (`brain.glb`, `knee.glb`) and Wikimedia Commons clinical MRI scans.*
