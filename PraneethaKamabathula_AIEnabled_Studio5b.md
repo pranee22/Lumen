@@ -75,6 +75,6 @@ Raw LLM radiology simplifications carry a **5%–10% error rate**, including fli
 | AI Model / Tool | Where Used | Used For |
 |---|---|---|
 | **Gemini 3 Flash Preview** *(fallback: Gemini 3.8 Flash)* | Server-side API (via built-in server API key) | Multimodal OCR and parsing of uploaded MRI PDFs/photos, plain-language translation, 3D spatial pin mapping, and grounded follow-up chat (including additional files attached mid-conversation). |
-| **Antigravity AI Assistant** | Research, Critique & Build | Clinical citation verification, contrarian and multi-persona safety testing, prototype engineering, synthetic test PDF generation, and documentation structuring. |
+| **Antigravity AI Assistant** | Research, Critique & Build | Clinical citation verification, multi-persona safety testing, prototype engineering, synthetic test PDF generation, and documentation. |
 
 *Prototype stack & open 3D assets: Built with Next.js, TypeScript, Tailwind CSS (Open Sans), and Three.js using official CC-BY 4.0 NIH HuBMAP / Allen Brain Atlas 3D meshes (`brain.glb`, `knee.glb`) and Wikimedia Commons clinical MRI scans.*
