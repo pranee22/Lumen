@@ -2,7 +2,7 @@
 
 **Praneetha Kamabathula, MIT-WPU**  
 **Live Prototype:** `<Add Vercel Link>`  
-**GitHub Repository (Code, Research, IA, User Flows & Test MRI Kit):** `<Add GitHub Link>`
+**GitHub Repository (Code, Research, IA, User Flows & Test MRI Kit):** [https://github.com/pranee22/Lumen](https://github.com/pranee22/Lumen)
 
 ---
 
