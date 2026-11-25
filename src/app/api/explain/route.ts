@@ -11,7 +11,112 @@ import {
   sanitizeLlmOutput,
   scrubPII,
 } from "@/lib/mri-engine";
-import { BodyRegion, MriFinding } from "@/lib/types";
+import { BodyRegion, MriFinding, SpatialPin } from "@/lib/types";
+
+/**
+ * Maps anatomical keywords to true 3D coordinates and ensures no two numbered badges
+ * ever stack or overlap on the 3D model.
+ */
+function resolveAnatomicalPin(
+  region: BodyRegion,
+  title: string,
+  sentence: string,
+  rawPin: Partial<SpatialPin> | undefined,
+  index: number,
+  placedPins: SpatialPin[]
+): SpatialPin {
+  const combined = `${title} ${sentence} ${rawPin?.anatomicalLabel || ""}`.toLowerCase();
+  let x = typeof rawPin?.x === "number" ? rawPin.x : 0;
+  let y = typeof rawPin?.y === "number" ? rawPin.y : 0;
+  let z = typeof rawPin?.z === "number" ? rawPin.z : 0;
+  const label = rawPin?.anatomicalLabel || title || "Scanned Area";
+
+  if (region === "brain") {
+    if (/\b(aica|chavda|arterial loop|vascular loop|auditory|cp angle)\b/.test(combined)) {
+      x = /\bleft\b/.test(combined) && !/\bright\b/.test(combined) ? -0.38 : 0.38;
+      y = -0.22;
+      z = -0.12;
+    } else if (/\b(ventricle|sulci|cistern|fluid|csf)\b/.test(combined)) {
+      x = 0.26;
+      y = 0.28;
+      z = -0.16;
+    } else if (/\b(hippocamp|thalam|basal ganglia|capsule|deep)\b/.test(combined)) {
+      x = -0.22;
+      y = 0.04;
+      z = 0.14;
+    } else if (/\b(cerebell|brainstem|pons|medulla|midbrain|posterior fossa|pituitary)\b/.test(combined)) {
+      x = 0.02;
+      y = -0.34;
+      z = -0.28;
+    } else if (/\b(sinus|mucosal|nasal|mastoid)\b/.test(combined)) {
+      x = 0.0;
+      y = -0.18;
+      z = 0.45;
+    } else if (/\b(frontal|hemisphere|parenchyma|cortex|infarct|hemorrhage|mass)\b/.test(combined)) {
+      x = -0.28;
+      y = 0.32;
+      z = 0.26;
+    }
+  } else if (region === "spine_lumbar") {
+    if (/\b(l4-l5|l5-s1|desiccation|bulge)\b/.test(combined)) {
+      x = 0.04;
+      y = -0.24;
+      z = 0.16;
+    } else if (/\bfacet\b/.test(combined)) {
+      x = 0.26;
+      y = -0.22;
+      z = -0.2;
+    } else {
+      x = -0.18;
+      y = 0.24;
+      z = 0.06;
+    }
+  } else if (region === "knee") {
+    if (/\bmedial menisc/.test(combined)) {
+      x = 0.32;
+      y = -0.08;
+      z = -0.16;
+    } else if (/\b(acl|pcl|cruciate)\b/.test(combined)) {
+      x = -0.06;
+      y = 0.08;
+      z = 0.14;
+    } else if (/\b(effusion|fluid|patell|cartilage)\b/.test(combined)) {
+      x = -0.26;
+      y = 0.22;
+      z = 0.22;
+    }
+  }
+
+  // Enforce minimum 3D separation so badges 1..N never overlap visually
+  const wellSpacedAnchors: Array<[number, number, number]> = [
+    [-0.28, 0.32, 0.24],
+    [0.36, -0.22, -0.12],
+    [-0.22, 0.04, 0.14],
+    [0.26, 0.28, -0.16],
+    [0.02, -0.34, -0.28],
+    [-0.32, -0.18, 0.22],
+    [0.32, 0.08, 0.22],
+  ];
+
+  const tooClose = (px: number, py: number, pz: number) =>
+    placedPins.some((p) => Math.hypot(p.x - px, p.y - py) < 0.22 && Math.hypot(p.x - px, p.y - py, p.z - pz) < 0.24);
+
+  if (tooClose(x, y, z)) {
+    for (let k = 0; k < wellSpacedAnchors.length; k++) {
+      const [ax, ay, az] = wellSpacedAnchors[(index + k) % wellSpacedAnchors.length];
+      if (!tooClose(ax, ay, az)) {
+        x = ax;
+        y = ay;
+        z = az;
+        break;
+      }
+    }
+  }
+
+  const finalPin: SpatialPin = { x, y, z, anatomicalLabel: label };
+  placedPins.push(finalPin);
+  return finalPin;
+}
 
 const SYSTEM_PROMPT = `You are Lumen, a plain-language visual MRI report explainer for non-medical patients.
 
@@ -110,6 +215,7 @@ export async function POST(req: NextRequest) {
     let userContext = "";
     let question = "";
     let currentReport = null;
+    let chatHistory: Array<{ role: string; text: string }> = [];
     let uploadedFileBase64: string | null = null;
     let uploadedMimeType: string | null = null;
 
@@ -125,6 +231,12 @@ export async function POST(req: NextRequest) {
       if (typeof rawReportJson === "string" && rawReportJson.trim()) {
         try {
           currentReport = JSON.parse(rawReportJson);
+        } catch {}
+      }
+      const rawHistoryJson = form.get("history");
+      if (typeof rawHistoryJson === "string" && rawHistoryJson.trim()) {
+        try {
+          chatHistory = JSON.parse(rawHistoryJson);
         } catch {}
       }
 
@@ -156,6 +268,7 @@ export async function POST(req: NextRequest) {
       userContext = typeof body.userContext === "string" ? body.userContext.trim() : "";
       question = typeof body.question === "string" ? body.question.trim() : "";
       currentReport = body.currentReport || null;
+      chatHistory = Array.isArray(body.history) ? body.history : [];
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -201,18 +314,29 @@ export async function POST(req: NextRequest) {
               ? "\nThe patient also attached an additional document/image above — read it carefully and discuss it alongside their MRI report."
               : "";
 
+          const historyNote =
+            chatHistory.length > 0
+              ? `\nRecent conversation history:\n${chatHistory
+                  .slice(-6)
+                  .map((h) => `${h.role === "user" ? "Patient" : "Lumen"}: "${h.text}"`)
+                  .join("\n")}`
+              : "";
+
           askParts.push({
-            text: `Answer this patient's question about their MRI report clearly, accurately, and without introducing details they did not mention.
-Patient question: "${effectiveQuestion}"
+            text: `Answer this patient's message about their MRI report clearly, naturally, and accurately.
+Patient message: "${effectiveQuestion}"
 Patient optional age: "${exactAge || ageBracket || "Not provided"}"
 Patient optional concern: "${userContext || "Not provided"}"
 Report summary: "${currentReport?.overallCalmTakeaway || "MRI report"}"
 Report findings:
-${findingsContext}${attachedTextNote}
+${findingsContext}${historyNote}${attachedTextNote}
 
 RULES FOR THIS REPLY:
+- Respond directly to what the patient just asked in context of the recent conversation history above.
+- Do NOT awkwardly repeat the patient's age or symptom in unrelated definition questions (for example, if they ask "what is chavda", explain the Chavda Type I/II/III grading system and what Type II means on their report naturally without saying "While you are 21 and experiencing migraines..."). Only reference their age or concern when it directly helps answer their question.
+- Never bring up symptoms the patient did not mention.
 - If the user is asking for medical advice, diagnosis, causation certainty, or treatment that Lumen cannot provide, set "needsDoctorAdvice": true, politely explain that Lumen can only read the report and clarify terms, advise them to ask their doctor for this query, and offer to help clarify any other terms on their report.
-- If the user is simply asking what a term, section, or attached document means, answer clearly and set "needsDoctorAdvice": false, "whatWeDontKnow": "", and "suggestedDoctorQuestion": "" (do NOT repeat disclaimers or doctor questions on routine clarification replies).
+- If the user is simply asking what a term, section, or attached document means (or replying to a follow-up), answer clearly and set "needsDoctorAdvice": false, "whatWeDontKnow": "", and "suggestedDoctorQuestion": "".
 
 Return ONLY JSON:
 {
@@ -409,6 +533,7 @@ Return ONLY JSON matching:
           const baseFallback = deterministicExplainMri(effectiveText, effectiveAgeBracket);
 
           if (Array.isArray(parsed.findings) && parsed.findings.length > 0) {
+            const placedPins: SpatialPin[] = [];
             const verifiedFindings: MriFinding[] = parsed.findings.map(
               (f: Partial<MriFinding>, i: number) => {
                 const orig = scrubPII(f.originalSentence || "Report line").cleanedText;
@@ -421,9 +546,11 @@ Return ONLY JSON matching:
                     ? "Lumen detected a wording mismatch while simplifying this line. Please read the exact original line below and review it with your doctor."
                     : rawCalm;
 
+                const cleanTitle = sanitizeLlmOutput(f.title || "MRI Observation").text;
+
                 return {
                   id: f.id || `f-${i + 1}`,
-                  title: sanitizeLlmOutput(f.title || "MRI Observation").text,
+                  title: cleanTitle,
                   category: f.category || "discuss_with_doctor",
                   categoryLabel: sanitizeLlmOutput(f.categoryLabel || "Review With Doctor").text,
                   originalSentence: orig,
@@ -432,7 +559,7 @@ Return ONLY JSON matching:
                   whatItIsNot: sanitizeLlmOutput(
                     f.whatItIsNot || "Requires clinical correlation by your doctor."
                   ).text,
-                  pin: f.pin || { x: 0, y: 0, z: 0, anatomicalLabel: "Scanned Area" },
+                  pin: resolveAnatomicalPin(finalRegion, cleanTitle, orig, f.pin, i, placedPins),
                   // Keyword-matched verified prevalence ONLY (never copied by array index)
                   prevalence: getVerifiedPrevalence(orig, effectiveAgeBracket),
                   safetyAudit: audit,

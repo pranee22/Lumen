@@ -63,27 +63,21 @@ export default function LumenApp() {
   };
 
   const buildInitialPromptFromReport = (data: MriExplainResponse): ChatMessage => {
-    const hasAica = data.findings.some((f) => /aica|chavda|arterial loop/i.test(f.title));
-    if (data.region === "brain" && hasAica) {
-      return {
-        id: "init-ai",
-        role: "assistant",
-        text: "Many people have this vessel loop (roughly 1 in 4 to 1 in 3 healthy adults), and most who have it never notice symptoms. In a small number of cases, people notice prior right-ear ringing or mild hearing changes. Have you noticed anything like this before?",
-        quickReplies: [
-          "Yes, I have noticed prior right-ear changes",
-          "No, nothing like that before",
-          "What does 'Chavda Type II' mean?",
-        ],
-      };
+    const notable = data.findings.find((f) => f.category !== "normal") || data.findings[0];
+    const replies: string[] = [];
+    if (notable) {
+      replies.push(`Tell me more about ${notable.title}`);
+    }
+    if (userContext.trim()) {
+      replies.push("How does this report relate to what I shared?");
+    } else {
+      replies.push("Are there any findings I should focus on?");
     }
     return {
       id: "init-ai",
       role: "assistant",
-      text: "Ask me about any phrase on your report, or share what you are experiencing so I can help prepare questions for your doctor.",
-      quickReplies: [
-        "What does this mean for my daily routine?",
-        "What should I ask my doctor?",
-      ],
+      text: "Ask me about any finding or medical term on your report, or attach another document below to discuss it alongside this scan.",
+      quickReplies: replies,
     };
   };
 
@@ -155,45 +149,16 @@ export default function LumenApp() {
       text: q || `Attached ${attached?.name}`,
       attachmentName: attached?.name,
     };
+    const recentHistory = messages
+      .slice(-6)
+      .map((m) => ({ role: m.role, text: m.text }));
+
     setMessages((prev) => [...prev, userMsg]);
     setChatInput("");
     setChatFile(null);
     setIsSending(true);
     if (sheetState === "resting") setSheetState("discuss");
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 40);
-
-    // Grounded response ONLY to what the user actually said (never introduces unmentioned details!)
-    if (!attached && /yes.*right-ear|prior right-ear/i.test(q) && !/earphone|headphone/i.test(q)) {
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `a-${Date.now()}`,
-            role: "assistant",
-            text: "That is useful context to share with your ENT alongside this scan. Because the Right AICA loop (Chavda Type II) sits near the right hearing-nerve canal, your doctor can review it together with your ear history. Your report also notes no nerve thinning or buckling, meaning the nerve structure itself looks intact.",
-          },
-        ]);
-        setIsSending(false);
-        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 60);
-      }, 220);
-      return;
-    }
-
-    if (!attached && /no, nothing like that before/i.test(q)) {
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `a-${Date.now()}`,
-            role: "assistant",
-            text: "Good to know — in people with no prior ear symptoms, a Chavda Type II AICA loop is generally treated as a harmless anatomical variation (seen in roughly 12%–35% of healthy adults). Nothing you need to monitor day to day.",
-          },
-        ]);
-        setIsSending(false);
-        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 60);
-      }, 220);
-      return;
-    }
 
     try {
       let res: Response;
@@ -205,6 +170,7 @@ export default function LumenApp() {
         form.append("userContext", userContext);
         form.append("exactAge", ageInput.trim());
         form.append("ageBracket", resolveAgeBracket(ageInput));
+        form.append("history", JSON.stringify(recentHistory));
         if (explainData) {
           form.append("currentReport", JSON.stringify(explainData));
         }
@@ -220,6 +186,7 @@ export default function LumenApp() {
             userContext,
             exactAge: ageInput.trim(),
             ageBracket: resolveAgeBracket(ageInput),
+            history: recentHistory,
           }),
         });
       }
